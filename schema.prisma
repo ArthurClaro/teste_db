@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id_usuario     Int        @id @default(autoincrement())
+  nome           String
+  cpf            String     @unique
+  data_nascimento DateTime
+  telefone       String
+  tipo_usuario   TipoUsuario
+  senha_hash     String
+  otp_ativo      String?    @db.VarChar(6)
+  otp_expiracao  DateTime?
+
+  funcionario    Funcionario?
+  cliente        Cliente?
+  endereco       Endereco[]
+  auditoria      Auditoria[]
+}
+
+model Funcionario {
+  id_funcionario     Int         @id @default(autoincrement())
+  id_usuario         Int         @unique
+  codigo_funcionario String      @unique
+  cargo              Cargo
+  id_supervisor      Int?
+
+  usuario            Usuario     @relation(fields: [id_usuario], references: [id_usuario])
+  supervisor         Funcionario? @relation("Supervisor", fields: [id_supervisor], references: [id_funcionario])
+  subordinados       Funcionario[] @relation("Supervisor")
+  relatorios         Relatorio[]
+}
+
+model Cliente {
+  id_cliente   Int       @id @default(autoincrement())
+  id_usuario   Int       @unique
+  score_credito Float    @default(0)
+
+  usuario      Usuario   @relation(fields: [id_usuario], references: [id_usuario])
+  contas       Conta[]
+}
+
+model Endereco {
+  id_endereco  Int       @id @default(autoincrement())
+  id_usuario   Int
+
+  cep          String
+  local        String
+  numero_casa  Int
+  bairro       String
+  cidade       String
+  estado       String    @db.Char(2)
+  complemento  String?
+
+  usuario      Usuario   @relation(fields: [id_usuario], references: [id_usuario])
+}
+
+model Agencia {
+  id_agencia     Int      @id @default(autoincrement())
+  nome           String
+  codigo_agencia String   @unique
+  endereco_id    Int
+
+  endereco       Endereco @relation(fields: [endereco_id], references: [id_endereco])
+  contas         Conta[]
+}
+
+model Conta {
+  id_conta       Int        @id @default(autoincrement())
+  numero_conta   String     @unique
+  id_agencia     Int
+  saldo          Float      @default(0)
+  tipo_conta     TipoConta
+  id_cliente     Int
+  data_abertura  DateTime   @default(now())
+  status         StatusConta @default(ATIVA)
+
+  cliente        Cliente    @relation(fields: [id_cliente], references: [id_cliente])
+  agencia        Agencia    @relation(fields: [id_agencia], references: [id_agencia])
+  poupanca       ContaPoupanca?
+  corrente       ContaCorrente?
+  investimento   ContaInvestimento?
+  transacoesOrigem Transacao[] @relation("Origem")
+  transacoesDestino Transacao[] @relation("Destino")
+}
+
+model ContaPoupanca {
+  id_conta_poupanca Int     @id @default(autoincrement())
+  id_conta          Int     @unique
+  taxa_rendimento   Float
+  ultimo_rendimento DateTime?
+
+  conta             Conta   @relation(fields: [id_conta], references: [id_conta])
+}
+
+model ContaCorrente {
+  id_conta_corrente Int     @id @default(autoincrement())
+  id_conta          Int     @unique
+  limite            Float   @default(0)
+  data_vencimento   DateTime
+  taxa_manutencao   Float   @default(0)
+
+  conta             Conta   @relation(fields: [id_conta], references: [id_conta])
+}
+
+model ContaInvestimento {
+  id_conta_investimento Int     @id @default(autoincrement())
+  id_conta              Int     @unique
+  perfil_risco          PerfilRisco
+  valor_minimo          Float
+  taxa_rendimento_base  Float
+
+  conta                 Conta   @relation(fields: [id_conta], references: [id_conta])
+}
+
+model Transacao {
+  id_transacao     Int       @id @default(autoincrement())
+  id_conta_origem  Int
+  id_conta_destino Int?
+  tipo_transacao   TipoTransacao
+  valor            Float
+  data_hora        DateTime  @default(now())
+  descricao        String?
+
+  conta_origem     Conta     @relation("Origem", fields: [id_conta_origem], references: [id_conta])
+  conta_destino    Conta?    @relation("Destino", fields: [id_conta_destino], references: [id_conta])
+}
+
+model Auditoria {
+  id_auditoria  Int      @id @default(autoincrement())
+  id_usuario    Int
+  acao          String
+  data_hora     DateTime @default(now())
+  detalhes      String
+
+  usuario       Usuario  @relation(fields: [id_usuario], references: [id_usuario])
+}
+
+model Relatorio {
+  id_relatorio     Int      @id @default(autoincrement())
+  id_funcionario   Int
+  tipo_relatorio   String
+  data_geracao     DateTime @default(now())
+  conteudo         String
+
+  funcionario      Funcionario @relation(fields: [id_funcionario], references: [id_funcionario])
+}
+
+enum TipoUsuario {
+  FUNCIONARIO
+  CLIENTE
+}
+
+enum Cargo {
+  ESTAGIARIO
+  ATENDENTE
+  GERENTE
+}
+
+enum TipoConta {
+  POUPANCA
+  CORRENTE
+  INVESTIMENTO
+}
+
+enum StatusConta {
+  ATIVA
+  ENCERRADA
+  BLOQUEADA
+}
+
+enum PerfilRisco {
+  BAIXO
+  MEDIO
+  ALTO
+}
+
+enum TipoTransacao {
+  DEPOSITO
+  SAQUE
+  TRANSFERENCIA
+  TAXA
+  RENDIMENTO
+}
