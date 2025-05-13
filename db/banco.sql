@@ -1,7 +1,4 @@
 
--- Banco de Dados: Banco Malvader
-CREATE DATABASE banco_malvader;
-USE banco_malvader;
 
 -- Tabela: usuario
 CREATE TABLE usuario (
